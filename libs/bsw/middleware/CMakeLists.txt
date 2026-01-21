@@ -15,7 +15,6 @@ add_library(
     src/middleware/core/DatabaseManipulator.cpp
     src/middleware/core/IClusterConnectionConfigurationBase.cpp
     src/middleware/core/LoggerApi.cpp
-    #src/middleware/core/MessageAllocator.cpp
     src/middleware/core/ProxyBase.cpp
     src/middleware/core/SkeletonBase.cpp
 )

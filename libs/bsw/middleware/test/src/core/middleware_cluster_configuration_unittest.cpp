@@ -1,16 +1,20 @@
 #include <stdint.h>
 
+#include <etl/array.h>
+#include <etl/limits.h>
+#include <etl/optional.h>
+#include <etl/span.h>
+
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "middleware/core/ClusterConnection.h"
 #include "middleware/core/IClusterConnectionConfigurationBase.h"
 #include "middleware/core/Message.h"
-#include "middleware/core/MessageAllocator.h"
 #include "middleware/core/ProxyBase.h"
 #include "middleware/core/SkeletonBase.h"
 #include "middleware/core/TransceiverContainer.h"
-#include "middleware/core/cluster_connection.h"
 #include "middleware/core/types.h"
-#include "middleware_InstancesDatabase.h"
+#include "middleware_instances_database.h"
 #include "proxy.h"
 #include "skeleton.h"
 
@@ -31,20 +35,20 @@ struct MiddelwareMessageComparator
 
     bool checkMsgHeader(MsgType const& other) const
     {
-        Message::Header const& msgHeader   = _msg.getHeader();
+        Message::Header const& msgHeader   = _msg.value().getHeader();
         Message::Header const& otherHeader = other.getHeader();
         return msgHeader.srcClusterId == otherHeader.srcClusterId
                && msgHeader.tgtClusterId == otherHeader.tgtClusterId
                && msgHeader.serviceId == otherHeader.serviceId
                && msgHeader.memberId == otherHeader.memberId
                && msgHeader.serviceInstanceId == otherHeader.serviceInstanceId
-               && _msg.getAddressId() == other.getAddressId()
+               && msgHeader.addressId == otherHeader.addressId
                && msgHeader.requestId == otherHeader.requestId
-               && _msg.getFlags() == other.getFlags()
-               && _msg.isSkeletonTarget() == other.isSkeletonTarget()
-               && _msg.isProxyTarget() == other.isProxyTarget()
-               && _msg.hasError() == other.hasError() && _msg.isEvent() == other.isEvent()
-               && _msg.hasOutArgs() == other.hasOutArgs();
+               && msgHeader.flags == otherHeader.flags && _msg.value().isError() == other.isError()
+               && _msg.value().isEvent() == other.isEvent()
+               && _msg.value().isRequest() == other.isRequest()
+               && _msg.value().isResponse() == other.isResponse()
+               && _msg.value().isFireAndForgetRequest() == other.isFireAndForgetRequest();
     }
 
     void setReturnCode(::middleware::core::HRESULT ret) { _ret = ret; }
@@ -56,7 +60,7 @@ struct MiddelwareMessageComparator
     }
 
 private:
-    MsgType _msg;
+    etl::optional<MsgType> _msg;
     ::middleware::core::HRESULT _ret{::middleware::core::HRESULT::Ok};
 };
 
@@ -100,7 +104,7 @@ struct ClusterConfigurationNoTimeout : public IClusterConnectionConfigurationBas
 {
     static uint16_t const serviceId{12};
     static uint16_t const instanceId{1};
-    static AddressId const addressId{1};
+    static uint16_t const addressId{1};
     static uint8_t const sourceClusterId{1};
     static uint8_t const targetClusterId{2};
 
@@ -127,9 +131,9 @@ struct ClusterConfigurationNoTimeout : public IClusterConnectionConfigurationBas
 
     uint8_t getTargetClusterId() const override { return targetClusterId; }
 
-    bool write(Message const& msg) const override { return true; }
+    bool write(Message const&) const override { return true; }
 
-    std::size_t registeredTransceiversCount(uint16_t const serviceId) const override { return 0; }
+    std::size_t registeredTransceiversCount(uint16_t const) const override { return 0; }
 
     HRESULT dispatchMessage(Message const& msg) const override
     {
@@ -190,11 +194,11 @@ struct ClusterConfigurationTimeout : ITimeoutConfiguration
 
     uint8_t getTargetClusterId() const override { return static_cast<uint8_t>(2); }
 
-    bool write(Message const& msg) const override { return true; }
+    bool write(Message const&) const override { return true; }
 
-    std::size_t registeredTransceiversCount(uint16_t const serviceId) const override { return 0; }
+    std::size_t registeredTransceiversCount(uint16_t const) const override { return 0; }
 
-    HRESULT dispatchMessage(Message const& msg) const override
+    HRESULT dispatchMessage(Message const&) const override
     {
         return ::middleware::core::HRESULT::Ok;
     }
@@ -234,13 +238,11 @@ public:
 
     static Message createRequestMessage(uint16_t const memberId, uint16_t const requestId)
     {
-        Message::Header header{
+        Message msg = Message::createRequest(
             ClusterConfigurationNoTimeout::serviceId,
             memberId,
             requestId,
-            ClusterConfigurationNoTimeout::instanceId};
-        Message msg = Message::createRequest(
-            header,
+            ClusterConfigurationNoTimeout::instanceId,
             ClusterConfigurationNoTimeout::sourceClusterId,
             ClusterConfigurationNoTimeout::targetClusterId,
             ClusterConfigurationNoTimeout::addressId);
@@ -249,14 +251,12 @@ public:
 
     static Message createInvalidRequestMessage(uint16_t const memberId, uint16_t const requestId)
     {
-        Message::Header header{
+        Message msg = Message::createRequest(
             ClusterConfigurationNoTimeout::serviceId
                 + 1 /* offset ensuring there is no hit in the DB*/,
             memberId,
             requestId,
-            ClusterConfigurationNoTimeout::instanceId};
-        Message msg = Message::createRequest(
-            header,
+            ClusterConfigurationNoTimeout::instanceId,
             ClusterConfigurationNoTimeout::sourceClusterId,
             ClusterConfigurationNoTimeout::targetClusterId,
             ClusterConfigurationNoTimeout::addressId
@@ -266,13 +266,11 @@ public:
 
     static Message createResponseMessage(uint16_t const memberId, uint16_t const requestId)
     {
-        Message::Header header{
+        Message msg = Message::createResponse(
             ClusterConfigurationNoTimeout::serviceId,
             memberId,
             requestId,
-            ClusterConfigurationNoTimeout::instanceId};
-        Message msg = Message::createResponse(
-            header,
+            ClusterConfigurationNoTimeout::instanceId,
             ClusterConfigurationNoTimeout::sourceClusterId,
             ClusterConfigurationNoTimeout::targetClusterId,
             ClusterConfigurationNoTimeout::addressId);
@@ -281,14 +279,12 @@ public:
 
     static Message createInvalidResponseMessage(uint16_t const memberId, uint16_t const requestId)
     {
-        Message::Header header{
+        Message msg = Message::createResponse(
             ClusterConfigurationNoTimeout::serviceId
                 + 1 /* offset ensuring there is no hit in the DB*/,
             memberId,
             requestId,
-            ClusterConfigurationNoTimeout::instanceId};
-        Message msg = Message::createResponse(
-            header,
+            ClusterConfigurationNoTimeout::instanceId,
             ClusterConfigurationNoTimeout::sourceClusterId,
             ClusterConfigurationNoTimeout::targetClusterId,
             ClusterConfigurationNoTimeout::addressId
@@ -324,12 +320,6 @@ TEST_F(ConfigurationBaseTest, ProxyTargetRoutedEvent)
 {
     Message eventMsg = createEvent(123);
 
-    // no client side return code for events, check the reception of the msg by looking at the
-    // delivered payload
-    uint32_t const obj = 0x1234U;
-    HRESULT ret        = MessageAllocator::getInstance().allocate(obj, eventMsg);
-
-    EXPECT_EQ(ret, HRESULT::Ok);
     EXPECT_TRUE(eventMsg.isEvent());
     EXPECT_EQ(::middleware::core::HRESULT::Ok, _clusterConf.dispatchMessage(eventMsg));
     EXPECT_TRUE(_clusterConf.getProxy().checkMsgHeader(eventMsg));

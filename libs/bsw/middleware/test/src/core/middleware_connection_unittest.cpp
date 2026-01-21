@@ -1,16 +1,18 @@
 #include <cstdint>
 
-#include "DslLogger.h"
+#include <etl/optional.h>
+
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "logger/DslLogger.h"
+#include "middleware/core/ClusterConnection.h"
 #include "middleware/core/IClusterConnectionConfigurationBase.h"
 #include "middleware/core/Message.h"
 #include "middleware/core/ProxyBase.h"
 #include "middleware/core/SkeletonBase.h"
 #include "middleware/core/TransceiverContainer.h"
-#include "middleware/core/cluster_connection.h"
 #include "middleware/core/types.h"
-#include "middleware_InstancesDatabase.h"
+#include "middleware_instances_database.h"
 #include "proxy.h"
 #include "skeleton.h"
 
@@ -38,7 +40,7 @@ struct ClusterConfigurationMockBase
 
     void setNextWriteResult(bool ret) { returnWrite = ret; }
 
-    ::middleware::core::Message getLastReceivedMessage() { return messageReceived; }
+    etl::optional<::middleware::core::Message> getLastReceivedMessage() { return messageReceived; }
 
     HRESULT dispatchMessage(::middleware::core::Message const& msg) const
     {
@@ -46,21 +48,15 @@ struct ClusterConfigurationMockBase
         return getResultInternal();
     }
 
-    HRESULT subscribe(ProxyBase& proxy, uint16_t const serviceInstanceId)
-    {
-        return getResultInternal();
-    }
+    HRESULT subscribe(ProxyBase&, uint16_t const) { return getResultInternal(); }
 
-    HRESULT subscribe(SkeletonBase& skeleton, uint16_t const serviceInstanceId)
-    {
-        return getResultInternal();
-    }
+    HRESULT subscribe(SkeletonBase&, uint16_t const) { return getResultInternal(); }
 
     uint8_t getSourceClusterId() const { return sourceClusterId; }
 
     uint8_t getTargetClusterId() const { return targetClusterId; }
 
-    bool write(Message const& msg) const { return returnWrite; }
+    bool write(Message const&) const { return returnWrite; }
 
 private:
     inline ::middleware::core::HRESULT getResultInternal() const
@@ -71,7 +67,7 @@ private:
     ::middleware::core::HRESULT returnHRESULT{::middleware::core::HRESULT::Ok};
     mutable std::uint8_t _mockReturnCounter{1};
     bool returnWrite{true};
-    mutable ::middleware::core::Message messageReceived;
+    mutable etl::optional<::middleware::core::Message> messageReceived;
 };
 
 struct ProxyMockWithTimeout
@@ -109,7 +105,7 @@ struct ClusterConnectionConfigurationProxyOnlyMock
         return ClusterConfigurationMockBase::subscribe(proxy, serviceInstanceId);
     }
 
-    void unsubscribe(ProxyBase& proxy, uint16_t const serviceId) override {}
+    void unsubscribe(ProxyBase&, uint16_t const) override {}
 
     HRESULT dispatchMessage(Message const& msg) const override
     {
@@ -131,7 +127,7 @@ struct ClusterConnectionConfigurationProxyOnlyMock
         return ClusterConfigurationMockBase::write(msg);
     }
 
-    std::size_t registeredTransceiversCount(uint16_t const serviceId) const override { return 0; }
+    std::size_t registeredTransceiversCount(uint16_t const) const override { return 0; }
 };
 
 struct ClusterConnectionConfigurationSkeletonOnlyMock
@@ -143,7 +139,7 @@ struct ClusterConnectionConfigurationSkeletonOnlyMock
         return ClusterConfigurationMockBase::subscribe(skeleton, serviceInstanceId);
     }
 
-    void unsubscribe(SkeletonBase& skeleton, uint16_t const serviceId) override {}
+    void unsubscribe(SkeletonBase&, uint16_t const) override {}
 
     HRESULT dispatchMessage(Message const& msg) const override
     {
@@ -165,7 +161,7 @@ struct ClusterConnectionConfigurationSkeletonOnlyMock
         return ClusterConfigurationMockBase::write(msg);
     }
 
-    std::size_t registeredTransceiversCount(uint16_t const serviceId) const override { return 0; }
+    std::size_t registeredTransceiversCount(uint16_t const) const override { return 0; }
 };
 
 struct ClusterConnectionConfigurationBidirectionalMock
@@ -177,14 +173,14 @@ struct ClusterConnectionConfigurationBidirectionalMock
         return ClusterConfigurationMockBase::subscribe(proxy, serviceInstanceId);
     }
 
-    void unsubscribe(ProxyBase& proxy, uint16_t const serviceId) override {}
+    void unsubscribe(ProxyBase&, uint16_t const) override {}
 
     HRESULT subscribe(SkeletonBase& skeleton, uint16_t const serviceInstanceId) override
     {
         return ClusterConfigurationMockBase::subscribe(skeleton, serviceInstanceId);
     }
 
-    void unsubscribe(SkeletonBase& skeleton, uint16_t const serviceId) override {}
+    void unsubscribe(SkeletonBase&, uint16_t const) override {}
 
     HRESULT dispatchMessage(Message const& msg) const override
     {
@@ -206,7 +202,7 @@ struct ClusterConnectionConfigurationBidirectionalMock
         return ClusterConfigurationMockBase::write(msg);
     }
 
-    std::size_t registeredTransceiversCount(uint16_t const serviceId) const override { return 0; }
+    std::size_t registeredTransceiversCount(uint16_t const) const override { return 0; }
 };
 
 struct ClusterConnectionConfigurationProxyOnlyTimeoutMock
@@ -219,7 +215,7 @@ struct ClusterConnectionConfigurationProxyOnlyTimeoutMock
         return ClusterConfigurationMockBase::subscribe(proxy, serviceInstanceId);
     }
 
-    void unsubscribe(ProxyBase& proxy, uint16_t const serviceId) override {}
+    void unsubscribe(ProxyBase&, uint16_t const) override {}
 
     HRESULT dispatchMessage(Message const& msg) const override
     {
@@ -241,17 +237,11 @@ struct ClusterConnectionConfigurationProxyOnlyTimeoutMock
         return ClusterConfigurationMockBase::write(msg);
     }
 
-    std::size_t registeredTransceiversCount(uint16_t const serviceId) const override { return 0; }
+    std::size_t registeredTransceiversCount(uint16_t const) const override { return 0; }
 
-    void registerTimeoutTransceiver(ITimeout& transceiver) override
-    {
-        TimeoutTransceiverCounter::up();
-    }
+    void registerTimeoutTransceiver(ITimeout&) override { TimeoutTransceiverCounter::up(); }
 
-    void unregisterTimeoutTransceiver(ITimeout& transceiver) override
-    {
-        TimeoutTransceiverCounter::down();
-    }
+    void unregisterTimeoutTransceiver(ITimeout&) override { TimeoutTransceiverCounter::down(); }
 
     void updateTimeouts() override { TimeoutTransceiverCounter::updateTimeouts(); }
 };
@@ -266,7 +256,7 @@ struct ClusterConnectionConfigurationSkeletonOnlyTimeoutMock
         return ClusterConfigurationMockBase::subscribe(skeleton, serviceInstanceId);
     }
 
-    void unsubscribe(SkeletonBase& skeleton, uint16_t const serviceId) override {}
+    void unsubscribe(SkeletonBase&, uint16_t const) override {}
 
     HRESULT dispatchMessage(Message const& msg) const override
     {
@@ -288,20 +278,14 @@ struct ClusterConnectionConfigurationSkeletonOnlyTimeoutMock
         return ClusterConfigurationMockBase::write(msg);
     }
 
-    std::size_t registeredTransceiversCount(uint16_t const serviceId) const override
+    std::size_t registeredTransceiversCount(uint16_t const) const override
     {
         return TimeoutTransceiverCounter::getValue();
     }
 
-    void registerTimeoutTransceiver(ITimeout& transceiver) override
-    {
-        TimeoutTransceiverCounter::up();
-    }
+    void registerTimeoutTransceiver(ITimeout&) override { TimeoutTransceiverCounter::up(); }
 
-    void unregisterTimeoutTransceiver(ITimeout& transceiver) override
-    {
-        TimeoutTransceiverCounter::down();
-    }
+    void unregisterTimeoutTransceiver(ITimeout&) override { TimeoutTransceiverCounter::down(); }
 
     void updateTimeouts() override { TimeoutTransceiverCounter::updateTimeouts(); }
 };
@@ -316,14 +300,14 @@ struct ClusterConnectionConfigurationBidirectionalTimeoutMock
         return ClusterConfigurationMockBase::subscribe(proxy, serviceInstanceId);
     }
 
-    void unsubscribe(ProxyBase& proxy, uint16_t const serviceId) override {}
+    void unsubscribe(ProxyBase&, uint16_t const) override {}
 
     HRESULT subscribe(SkeletonBase& skeleton, uint16_t const serviceInstanceId) override
     {
         return ClusterConfigurationMockBase::subscribe(skeleton, serviceInstanceId);
     }
 
-    void unsubscribe(SkeletonBase& skeleton, uint16_t const serviceId) override {}
+    void unsubscribe(SkeletonBase&, uint16_t const) override {}
 
     HRESULT dispatchMessage(Message const& msg) const override
     {
@@ -345,20 +329,14 @@ struct ClusterConnectionConfigurationBidirectionalTimeoutMock
         return ClusterConfigurationMockBase::write(msg);
     }
 
-    std::size_t registeredTransceiversCount(uint16_t const serviceId) const override
+    std::size_t registeredTransceiversCount(uint16_t const) const override
     {
         return TimeoutTransceiverCounter::getValue();
     }
 
-    void registerTimeoutTransceiver(ITimeout& transceiver) override
-    {
-        TimeoutTransceiverCounter::up();
-    }
+    void registerTimeoutTransceiver(ITimeout&) override { TimeoutTransceiverCounter::up(); }
 
-    void unregisterTimeoutTransceiver(ITimeout& transceiver) override
-    {
-        TimeoutTransceiverCounter::down();
-    }
+    void unregisterTimeoutTransceiver(ITimeout&) override { TimeoutTransceiverCounter::down(); }
 
     void updateTimeouts() override { TimeoutTransceiverCounter::updateTimeouts(); }
 };
@@ -484,9 +462,11 @@ TEST_F(ConnectionBaseTest, SubscribeUnsubscribeBidirectionalWithTimeout)
 
 TEST_F(ConnectionBaseTest, SendMessageSameClusterNoError)
 {
-    Message::Header header{1, 123, 321, 2};
     Message msg = Message::createRequest(
-        header,
+        1,
+        123,
+        321,
+        2,
         ClusterConfigurationMockBase::sourceClusterId,
         ClusterConfigurationMockBase::sourceClusterId,
         4);
@@ -505,9 +485,11 @@ TEST_F(ConnectionBaseTest, SendMessageSameClusterNoError)
 
 TEST_F(ConnectionBaseTest, SendMessageClusterToClusterNoError)
 {
-    Message::Header header{1, 123, 321, 2};
     Message msg = Message::createRequest(
-        header,
+        1,
+        123,
+        321,
+        2,
         ClusterConfigurationMockBase::sourceClusterId,
         ClusterConfigurationMockBase::targetClusterId,
         4);
@@ -526,9 +508,11 @@ TEST_F(ConnectionBaseTest, SendMessageClusterToClusterNoError)
 
 TEST_F(ConnectionBaseTest, SendMessageClusterToClusterFailed)
 {
-    Message::Header header{1, 123, 321, 2};
     Message msg = Message::createRequest(
-        header,
+        1,
+        123,
+        321,
+        2,
         ClusterConfigurationMockBase::sourceClusterId,
         ClusterConfigurationMockBase::targetClusterId,
         4);
@@ -563,9 +547,11 @@ TEST_F(ConnectionBaseTest, SendMessageClusterToClusterFailed)
 
 TEST_F(ConnectionBaseTest, SendMessageSameClusterServiceNotFound)
 {
-    Message::Header header{1, 123, 321, 2};
     Message msg = Message::createRequest(
-        header,
+        1,
+        123,
+        321,
+        2,
         ClusterConfigurationMockBase::sourceClusterId,
         ClusterConfigurationMockBase::sourceClusterId,
         4);
@@ -598,14 +584,16 @@ TEST_F(ConnectionBaseTest, SendMessageSameClusterServiceNotFound)
     EXPECT_EQ(::middleware::core::HRESULT::ServiceNotFound, ptrToBase->sendMessage(msg));
 
     auto lastReceivedMsg = confSkeletonOnly.getLastReceivedMessage();
-    EXPECT_EQ(lastReceivedMsg.getErrorState(), ErrorState::ServiceNotFound);
+    EXPECT_EQ(lastReceivedMsg.value().getErrorState(), ErrorState::ServiceNotFound);
 }
 
 TEST_F(ConnectionBaseTest, SendMessageSameClusterServiceBusy)
 {
-    Message::Header header{1, 123, 321, 2};
     Message msg = Message::createRequest(
-        header,
+        1,
+        123,
+        321,
+        2,
         ClusterConfigurationMockBase::sourceClusterId,
         ClusterConfigurationMockBase::sourceClusterId,
         4);
@@ -638,14 +626,16 @@ TEST_F(ConnectionBaseTest, SendMessageSameClusterServiceBusy)
     EXPECT_EQ(::middleware::core::HRESULT::ServiceBusy, ptrToBase->sendMessage(msg));
 
     auto lastReceivedMsg = confSkeletonOnly.getLastReceivedMessage();
-    EXPECT_EQ(lastReceivedMsg.getErrorState(), ErrorState::ServiceBusy);
+    EXPECT_EQ(lastReceivedMsg.value().getErrorState(), ErrorState::ServiceBusy);
 }
 
 TEST_F(ConnectionBaseTest, SendMessageSameClusterServiceBusyFireAndForget)
 {
-    Message::Header header{1, 123, INVALID_REQUEST_ID, 2};
     Message msg = Message::createRequest(
-        header,
+        1,
+        123,
+        INVALID_REQUEST_ID,
+        2,
         ClusterConfigurationMockBase::sourceClusterId,
         ClusterConfigurationMockBase::sourceClusterId,
         4);
@@ -669,9 +659,11 @@ TEST_F(ConnectionBaseTest, SendMessageSameClusterServiceBusyFireAndForget)
 TEST_F(ConnectionBaseTest, processMessageFromReceivingSide)
 {
     // generated code pops a single message from the queue
-    Message::Header header{1, 123, 321, 2};
     Message msg = Message::createRequest(
-        header,
+        1,
+        123,
+        321,
+        2,
         ClusterConfigurationMockBase::sourceClusterId,
         ClusterConfigurationMockBase::sourceClusterId,
         4);
@@ -688,7 +680,7 @@ TEST_F(ConnectionBaseTest, processMessageFromReceivingSide)
     EXPECT_NO_THROW(ptrToBase->processMessage(msg));
 
     auto lastReceivedMsg = confSkeletonOnly.getLastReceivedMessage();
-    EXPECT_EQ(lastReceivedMsg.getErrorState(), ErrorState::NoError);
+    EXPECT_EQ(lastReceivedMsg.value().getErrorState(), ErrorState::NoError);
 }
 
 TEST_F(ConnectionBaseTest, ProxyRegistersAsTimeoutTransceiver)
@@ -719,8 +711,8 @@ TEST_F(ConnectionBaseTest, SyntheticClusterIdGetter)
     ::middleware::core::IClusterConnection* ptrToBase = &actualConnection;
 
     // expectation: Connection getters are just relaying to the configuration getters
-    EXPECT_EQ(ptrToBase->getSourceClusterId(), confSkeletonOnly.getHeader().srcClusterId);
-    EXPECT_EQ(ptrToBase->getTargetClusterId(), confSkeletonOnly.getHeader().tgtClusterId);
+    EXPECT_EQ(ptrToBase->getSourceClusterId(), confSkeletonOnly.getSourceClusterId());
+    EXPECT_EQ(ptrToBase->getTargetClusterId(), confSkeletonOnly.getTargetClusterId());
 }
 
 } // namespace test

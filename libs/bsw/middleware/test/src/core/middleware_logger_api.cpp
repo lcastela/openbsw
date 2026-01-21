@@ -2,7 +2,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "DslLogger.h"
+#include "logger/DslLogger.h"
 #include "middleware/core/LoggerApi.h"
 
 namespace middleware::core::test
@@ -24,8 +24,9 @@ TEST_F(LoggerApiTest, TestLogAllocationFailure)
     // ARRANGE
     logger::LogLevel const level = logger::LogLevel::Error;
     logger::Error const error    = logger::Error::Allocation;
-    const HRESULT res            = HRESULT::CannotAllocatePayload;
-    core::Message const msg{};
+    HRESULT const res            = HRESULT::CannotAllocatePayload;
+    core::Message const msg
+        = core::Message::createRequest(0x1000U, 0x2000U, 0x3000U, 0x4000U, 1U, 2U, 3U);
 
     // ACT && ASSERT
     logger_mock_.EXPECT_LOG(
@@ -62,8 +63,7 @@ TEST_F(LoggerApiTest, TestLogInitFailure)
     const HRESULT res                = HRESULT::TransceiverInitializationFailed;
     uint16_t const serviceId         = etl::numeric_limits<uint16_t>::max();
     uint16_t const serviceInstanceId = etl::numeric_limits<uint16_t>::max();
-    uint8_t const sourceCluster
-        = static_cast<uint8_t>(etl::numeric_limits<etl::underlying_type_t<uint8_t>>::max());
+    uint8_t const sourceCluster      = etl::numeric_limits<uint8_t>::max();
 
     // ACT && ASSERT
     logger_mock_.EXPECT_LOG(
@@ -84,8 +84,9 @@ TEST_F(LoggerApiTest, TestLogMessageSendingFailure)
     // ARRANGE
     logger::LogLevel const level = logger::LogLevel::Error;
     logger::Error const error    = logger::Error::DispatchMessage;
-    const HRESULT res            = HRESULT::ServiceNotFound;
-    core::Message const msg{};
+    HRESULT const res            = HRESULT::ServiceNotFound;
+    core::Message const msg
+        = core::Message::createRequest(0x1000U, 0x2000U, 0x3000U, 0x4000U, 1U, 2U, 3U);
 
     // ACT && ASSERT
     logger_mock_.EXPECT_LOG(
@@ -119,10 +120,9 @@ TEST_F(LoggerApiTest, TestLogCrossThreadViolation)
     logger::Error const error        = logger::Error::ProxyCrossThreaViolation;
     uint16_t const serviceId         = etl::numeric_limits<uint16_t>::max();
     uint16_t const serviceInstanceId = etl::numeric_limits<uint16_t>::max();
-    uint8_t const sourceCluster
-        = static_cast<uint8_t>(etl::numeric_limits<etl::underlying_type_t<uint8_t>>::max());
-    uint32_t const initId        = etl::numeric_limits<uint32_t>::max();
-    uint32_t const currentTaskId = etl::numeric_limits<uint32_t>::max();
+    uint8_t const sourceCluster      = etl::numeric_limits<uint8_t>::max();
+    uint32_t const initId            = etl::numeric_limits<uint32_t>::max();
+    uint32_t const currentTaskId     = etl::numeric_limits<uint32_t>::max();
 
     // ACT && ASSERT
     logger_mock_.EXPECT_LOG(

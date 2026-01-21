@@ -26,7 +26,8 @@ public:
 protected:
     constexpr ProxyBase() : ITransceiver(), addressId_(INVALID_ADDRESS_ID) {}
 
-    virtual ~ProxyBase();
+    virtual ~ProxyBase() = default;
+
     uint8_t getSourceClusterId() const final;
     void unsubscribe(uint16_t const serviceId);
     void checkCrossThreadError(uint32_t const initId) const;

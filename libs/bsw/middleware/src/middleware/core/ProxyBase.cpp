@@ -131,8 +131,6 @@ uint8_t ProxyBase::getAddressId() const { return addressId_; }
 
 bool ProxyBase::isInitialized() const { return (fConnection != nullptr); }
 
-ProxyBase::~ProxyBase() = default;
-
 void ProxyBase::setAddressId(uint8_t const addressId) { addressId_ = addressId; }
 
 void ProxyBase::checkCrossThreadError(uint32_t const initId) const

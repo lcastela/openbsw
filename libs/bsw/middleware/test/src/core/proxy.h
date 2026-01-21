@@ -8,8 +8,8 @@ public:
     ProxyMock(
         uint16_t serviceId,
         uint16_t instanceId,
-        ::middleware::core::AddressId addressId = etl::numeric_limits<uint16_t>::max())
-    : serviceId_(serviceId), ::middleware::core::ProxyBase()
+        uint16_t addressId = etl::numeric_limits<uint16_t>::max())
+    : ::middleware::core::ProxyBase(), serviceId_(serviceId)
     {
         this->setAddressId(addressId);
         this->setInstanceId(instanceId);
@@ -17,7 +17,7 @@ public:
 
     uint16_t getServiceId() const final { return serviceId_; }
 
-    virtual ::middleware::core::HRESULT onNewMessageReceived(::middleware::core::Message const& msg)
+    virtual ::middleware::core::HRESULT onNewMessageReceived(::middleware::core::Message const&)
     {
         return ::middleware::core::HRESULT::NotImplemented;
     }

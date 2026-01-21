@@ -6,14 +6,14 @@ class SkeletonMock : public ::middleware::core::SkeletonBase
 {
 public:
     SkeletonMock(uint16_t serviceId, uint16_t instanceId)
-    : serviceId_(serviceId), middleware::core::SkeletonBase()
+    : middleware::core::SkeletonBase(), serviceId_(serviceId)
     {
         this->setInstanceId(instanceId);
     }
 
     uint16_t getServiceId() const final { return serviceId_; }
 
-    virtual ::middleware::core::HRESULT onNewMessageReceived(::middleware::core::Message const& msg)
+    virtual ::middleware::core::HRESULT onNewMessageReceived(::middleware::core::Message const&)
     {
         return ::middleware::core::HRESULT::NotImplemented;
     }

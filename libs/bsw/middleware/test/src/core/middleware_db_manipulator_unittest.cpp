@@ -6,7 +6,6 @@
 #include "proxy.h"
 #include "skeleton.h"
 
-using ::middleware::core::AddressId;
 using ::middleware::core::HRESULT;
 using ::middleware::core::ITransceiver;
 using ::middleware::core::meta::DbManipulator;
@@ -302,7 +301,7 @@ TEST_F(DbManipulatorTest, TestUnknownProxyUnsubscribe)
 {
     // ARRANGE
     uint16_t const instanceId = 0x01;
-    AddressId const addressId = etl::numeric_limits<uint8_t>::max();
+    uint16_t const addressId  = etl::numeric_limits<uint8_t>::max();
     ProxyMock proxy(0xFF, instanceId, addressId);
 
     // ACT && ASSERT
@@ -408,7 +407,7 @@ TEST_F(DbManipulatorTest, TestProxyTransceiverValidSearch)
     // ARRANGE
     uint16_t const service    = 0x41U;
     uint16_t const instanceId = 0x1U;
-    AddressId const addressId = 0x1U;
+    uint16_t const addressId  = 0x1U;
 
     // ACT && ASSERT
     ITransceiver const* const transceiver = DbManipulator::getTransceiver(
@@ -424,7 +423,7 @@ TEST_F(DbManipulatorTest, TestProxyTranceiverSearchWithUnkownServiceId)
     uint16_t const service
         = etl::numeric_limits<uint16_t>::max(); // unknown service id to the database
     uint16_t const instanceId = 0x1U;
-    AddressId const addressId = 0x1U;
+    uint16_t const addressId  = 0x1U;
 
     // ACT && ASSERT
     ITransceiver const* const transceiver = DbManipulator::getTransceiver(
@@ -439,7 +438,7 @@ TEST_F(DbManipulatorTest, TestProxyTranceiverSearchWithUnkownInstanceId)
     uint16_t const service = 0x41U;
     uint16_t const instanceId
         = etl::numeric_limits<uint16_t>::max(); // unknown instance id to the database
-    AddressId const addressId = 0x1U;
+    uint16_t const addressId = 0x1U;
 
     // ACT && ASSERT
     ITransceiver const* const transceiver = DbManipulator::getTransceiver(
@@ -453,7 +452,7 @@ TEST_F(DbManipulatorTest, TestProxyTranceiverSearchWithUnkownAddressId)
     // ARRANGE
     uint16_t const service    = 0x41U;
     uint16_t const instanceId = 0x1U;
-    AddressId const addressId
+    uint16_t const addressId
         = etl::numeric_limits<uint8_t>::max(); // unknown address id to the database
 
     // ACT && ASSERT
@@ -468,7 +467,7 @@ TEST_F(DbManipulatorTest, TestSkeletonTransceiverValidSearch)
     // ARRANGE
     uint16_t const service    = 0x41U;
     uint16_t const instanceId = 0x1U;
-    AddressId const addressId = etl::numeric_limits<uint8_t>::max();
+    uint16_t const addressId  = etl::numeric_limits<uint8_t>::max();
 
     // ACT && ASSERT
     ITransceiver const* const transceiver = DbManipulator::getTransceiver(
@@ -484,7 +483,7 @@ TEST_F(DbManipulatorTest, TestSkeletonTranceiverSearchWithUnkownServiceId)
     uint16_t const service
         = etl::numeric_limits<uint16_t>::max(); // unknown service id to the database
     uint16_t const instanceId = 0x1U;
-    AddressId const addressId = etl::numeric_limits<uint8_t>::max();
+    uint16_t const addressId  = etl::numeric_limits<uint8_t>::max();
 
     // ACT && ASSERT
     ITransceiver const* const transceiver = DbManipulator::getTransceiver(
@@ -498,7 +497,7 @@ TEST_F(DbManipulatorTest, TestSkeletonTranceiverSearchWithUnkownInstanceId)
     // ARRANGE
     uint16_t const service    = 0x41U;
     uint16_t const instanceId = 0xFFFFU; // unknown instance id to the database
-    AddressId const addressId = etl::numeric_limits<uint8_t>::max();
+    uint16_t const addressId  = etl::numeric_limits<uint8_t>::max();
 
     // ACT && ASSERT
     ITransceiver const* const transceiver = DbManipulator::getTransceiver(
@@ -512,7 +511,7 @@ TEST_F(DbManipulatorTest, TestSkeletonTranceiverSearchWithUnkownAdressId)
     // ARRANGE
     uint16_t const service    = 0x41U;
     uint16_t const instanceId = 0x1U;
-    AddressId const addressId = 0x1U; // unknown address id to the database
+    uint16_t const addressId  = 0x1U; // unknown address id to the database
 
     // ACT && ASSERT
     ITransceiver const* const transceiver = DbManipulator::getTransceiver(
