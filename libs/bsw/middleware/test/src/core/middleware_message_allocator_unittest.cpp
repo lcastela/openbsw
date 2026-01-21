@@ -6,8 +6,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "DslLogger.h"
 #include "allocator_mock.h"
-#include "dsl_logger.h"
 #include "middleware/core/Message.h"
 #include "middleware/core/MessageAllocator.h"
 #include "middleware/core/types.h"

@@ -2,7 +2,7 @@
 
 #include <etl/span.h>
 
-#include "dsl_logger.h"
+#include "DslLogger.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "middleware/core/IClusterConnection.h"

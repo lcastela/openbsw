@@ -19,7 +19,7 @@ namespace middleware::core
 
 MessageAllocator MessageAllocator::gInstance{};
 
-HRESULT MessageAllocator::allocateTrivialType_(
+HRESULT MessageAllocator::allocateTrivialType(
     void const* objPtr, size_t const objSize, Message& msg, uint8_t const numberOfReferences)
 {
     HRESULT ret = HRESULT::CannotAllocatePayload;
@@ -79,7 +79,7 @@ etl::optional<etl::span<uint8_t>> MessageAllocator::allocateNonTrivialType_(
     return ret;
 }
 
-uint8_t* MessageAllocator::getAllocatorPointerFromMessage_(Message const& msg)
+uint8_t* MessageAllocator::getAllocatorPointerFromMessage(Message const& msg)
 {
     AllocatorBase& allocator         = memory::getAllocator(msg.getHeader().serviceId);
     auto const& handle               = msg.getExternalHandle_();
@@ -92,7 +92,7 @@ void MessageAllocator::deallocate(Message const& msg)
 {
     if (msg.hasExternalPayload())
     {
-        uint8_t* externalPtr = getAllocatorPointerFromMessage_(msg);
+        uint8_t* externalPtr = getAllocatorPointerFromMessage(msg);
         auto const& handle   = msg.getExternalHandle_();
         bool res             = false;
         if (handle.isPayloadShared)

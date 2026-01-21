@@ -1,6 +1,7 @@
 #pragma once
 
 #include <etl/array.h>
+#include <etl/span.h>
 
 #include "middleware/core/IClusterConnection.h"
 #include "middleware/core/InstancesDatabase.h"
@@ -15,27 +16,21 @@ public:
 
     uint8_t getTargetClusterId() const override { return static_cast<uint8_t>(2U); }
 
-    HRESULT subscribe(ProxyBase& proxy, uint16_t const serviceInstanceId) override
-    {
-        return HRESULT::Ok;
-    }
+    HRESULT subscribe(ProxyBase&, uint16_t const) override { return HRESULT::Ok; }
 
-    HRESULT subscribe(SkeletonBase& skeleton, uint16_t const serviceInstanceId) override
-    {
-        return HRESULT::Ok;
-    }
+    HRESULT subscribe(SkeletonBase&, uint16_t const) override { return HRESULT::Ok; }
 
-    void unsubscribe(ProxyBase& proxy, uint16_t const serviceId) override {}
+    void unsubscribe(ProxyBase&, uint16_t const) override {}
 
-    void unsubscribe(SkeletonBase& skeleton, uint16_t const serviceId) override {}
+    void unsubscribe(SkeletonBase&, uint16_t const) override {}
 
-    HRESULT sendMessage(Message const& msg) const override { return HRESULT::Ok; }
+    HRESULT sendMessage(Message const&) const override { return HRESULT::Ok; }
 
-    void processMessage(Message const& msg) const override {}
+    void processMessage(Message const&) const override {}
 
-    size_t registeredTransceiversCount(uint16_t const serviceId) const override { return 1U; }
+    size_t registeredTransceiversCount(uint16_t const) const override { return 1U; }
 
-    HRESULT dispatchMessage(Message const& msg) const override { return HRESULT::Ok; }
+    HRESULT dispatchMessage(Message const&) const override { return HRESULT::Ok; }
 };
 
 class BadClusterConnection : public IClusterConnection
@@ -45,27 +40,21 @@ public:
 
     uint8_t getTargetClusterId() const override { return static_cast<uint8_t>(2U); }
 
-    HRESULT subscribe(ProxyBase& proxy, uint16_t const serviceInstanceId) override
-    {
-        return HRESULT::NotRegistered;
-    }
+    HRESULT subscribe(ProxyBase&, uint16_t const) override { return HRESULT::NotRegistered; }
 
-    HRESULT subscribe(SkeletonBase& skeleton, uint16_t const serviceInstanceId) override
-    {
-        return HRESULT::NotRegistered;
-    }
+    HRESULT subscribe(SkeletonBase&, uint16_t const) override { return HRESULT::NotRegistered; }
 
-    void unsubscribe(ProxyBase& proxy, uint16_t const serviceId) override {}
+    void unsubscribe(ProxyBase&, uint16_t const) override {}
 
-    void unsubscribe(SkeletonBase& skeleton, uint16_t const serviceId) override {}
+    void unsubscribe(SkeletonBase&, uint16_t const) override {}
 
-    HRESULT sendMessage(Message const& msg) const override { return HRESULT::NotRegistered; }
+    HRESULT sendMessage(Message const&) const override { return HRESULT::NotRegistered; }
 
-    void processMessage(Message const& msg) const override {}
+    void processMessage(Message const&) const override {}
 
-    size_t registeredTransceiversCount(uint16_t const serviceId) const override { return 0U; }
+    size_t registeredTransceiversCount(uint16_t const) const override { return 0U; }
 
-    HRESULT dispatchMessage(Message const& msg) const override
+    HRESULT dispatchMessage(Message const&) const override
     {
         return HRESULT::CannotAllocatePayload;
     }
@@ -78,17 +67,17 @@ public:
 
     etl::span<IClusterConnection* const> getSkeletonConnectionsRange() const override
     {
-        return etl::span(fSkeletonConnections);
+        return etl::span<IClusterConnection* const>(fSkeletonConnections);
     }
 
     etl::span<IClusterConnection* const> getProxyConnectionsRange() const override
     {
-        return etl::span(fProxyConnections);
+        return etl::span<IClusterConnection* const>(fProxyConnections);
     }
 
     etl::span<::uint16_t const> getInstanceIdsRange() const override
     {
-        return etl::span(instanceIds_);
+        return etl::span<uint16_t const>(instanceIds_);
     }
 
 private:
@@ -105,17 +94,17 @@ public:
 
     etl::span<IClusterConnection* const> getSkeletonConnectionsRange() const override
     {
-        return etl::span(fSkeletonConnections);
+        return etl::span<IClusterConnection* const>(fSkeletonConnections);
     }
 
     etl::span<IClusterConnection* const> getProxyConnectionsRange() const override
     {
-        return etl::span(fProxyConnections);
+        return etl::span<IClusterConnection* const>(fProxyConnections);
     }
 
     etl::span<::uint16_t const> getInstanceIdsRange() const override
     {
-        return etl::span(instanceIds_);
+        return etl::span<uint16_t const>(instanceIds_);
     }
 
 private:
@@ -132,17 +121,17 @@ public:
 
     etl::span<IClusterConnection* const> getSkeletonConnectionsRange() const override
     {
-        return etl::span(fSkeletonConnections);
+        return etl::span<IClusterConnection* const>(fSkeletonConnections);
     }
 
     etl::span<IClusterConnection* const> getProxyConnectionsRange() const override
     {
-        return etl::span(fProxyConnections);
+        return etl::span<IClusterConnection* const>(fProxyConnections);
     }
 
     etl::span<::uint16_t const> getInstanceIdsRange() const override
     {
-        return etl::span(instanceIds_);
+        return etl::span<uint16_t const>(instanceIds_);
     }
 
 private:

@@ -11,7 +11,7 @@
 
 #include "middleware/core/LoggerApi.h"
 #include "middleware/logger/Logger.h"
-#include "mock/logger_mock.h"
+#include "mock/LoggerMock.h"
 
 namespace middleware::logger::test
 {
@@ -37,8 +37,8 @@ public:
     void EXPECT_LOG(LogLevel const level, std::string const& format, Args... args)
     {
         etl::vector<uint32_t, sizeof(uint32_t) * sizeof...(Args)> vec;
-        ((vec.push_back(static_cast<uint32_t>(args))),
-         ...); // Fold expression to iterate and process each argument
+        push_all(vec, args...);
+
         EXPECT_CALL(_mock, log(level, StrEq(format.c_str()), ElementsAreArray(vec)))
             .Times(Exactly(1U))
             .WillRepeatedly(Return());
@@ -53,11 +53,9 @@ public:
         uint32_t const messageId = logger::getMessageId(error);
 
         uint32_t index = 0U;
-        memcpy(&buffer[index], &messageId, sizeof(messageId));
-        index += sizeof(messageId);
-        memcpy(&buffer[index], &error, sizeof(error));
-        index += sizeof(error);
-        ((memcpy(&buffer[index], &args, sizeof(args)), index += sizeof(args)), ...);
+        copy_to_buffer(buffer.data(), index, messageId);
+        copy_to_buffer(buffer.data(), index, error);
+        copy_to_buffer(buffer.data(), index, args...);
 
         EXPECT_CALL(_mock, log_binary(level, ElementsAreArray(buffer)))
             .Times(Exactly(1U))
@@ -72,6 +70,35 @@ public:
     {
         EXPECT_NO_LOG();
         EXPECT_NO_BINARY_LOG();
+    }
+
+private:
+    template<typename T>
+    void push_all(etl::ivector<uint32_t>& vec, T arg)
+    {
+        vec.push_back(static_cast<uint32_t>(arg));
+    }
+
+    template<typename T, typename... Args>
+    void push_all(etl::ivector<uint32_t>& vec, T arg, Args... args)
+    {
+        vec.push_back(static_cast<uint32_t>(arg));
+        push_all(vec, args...);
+    }
+
+    template<typename T>
+    void copy_to_buffer(uint8_t* const buffer, uint32_t& index, T arg)
+    {
+        memcpy(&buffer[index], &arg, sizeof(arg));
+        index += sizeof(arg);
+    }
+
+    template<typename T, typename... Args>
+    void copy_to_buffer(uint8_t* const buffer, uint32_t& index, T arg, Args... args)
+    {
+        memcpy(&buffer[index], &arg, sizeof(arg));
+        index += sizeof(arg);
+        copy_to_buffer(buffer, index, args...);
     }
 };
 

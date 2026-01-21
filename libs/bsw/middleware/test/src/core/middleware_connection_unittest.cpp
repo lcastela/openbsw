@@ -1,6 +1,6 @@
 #include <cstdint>
 
-#include "dsl_logger.h"
+#include "DslLogger.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "middleware/core/IClusterConnectionConfigurationBase.h"

@@ -2,7 +2,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "dsl_logger.h"
+#include "DslLogger.h"
 #include "middleware/core/LoggerApi.h"
 
 namespace middleware::core::test

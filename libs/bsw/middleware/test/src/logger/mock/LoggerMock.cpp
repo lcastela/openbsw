@@ -1,4 +1,4 @@
-#include "mock/logger_mock.h"
+#include "LoggerMock.h"
 
 #include <cstdarg>
 #include <cstdio>
@@ -54,7 +54,7 @@ void log(LogLevel const level, char const* const format, ...)
 
 void log_binary(LogLevel const level, etl::span<uint8_t const> const data)
 {
-    for (int i = 0; i < data.size(); ++i)
+    for (size_t i = 0; i < data.size(); ++i)
     {
         printf("%d ", data[i]);
     }

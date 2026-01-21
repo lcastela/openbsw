@@ -3,16 +3,15 @@
 
 #include <etl/span.h>
 
-#include "dsl_logger.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "logger/DslLogger.h"
 #include "middleware/core/IClusterConnection.h"
 #include "middleware/core/LoggerApi.h"
 #include "middleware/core/Message.h"
-#include "middleware/core/MessageAllocator.h"
 #include "middleware/core/ProxyBase.h"
 #include "middleware/core/types.h"
-#include "middleware_InstancesDatabase.h"
+#include "middleware_instances_database.h"
 
 using testing::_;
 using testing::Exactly;
@@ -31,7 +30,7 @@ public:
     HRESULT init(uint16_t instanceId, uint8_t clusterId)
     {
         return ProxyBase::initFromInstancesDatabase(
-            instanceId, clusterId, etl::span(INSTANCESDATABASE));
+            instanceId, clusterId, etl::span<IInstanceDatabase const* const>(INSTANCESDATABASE));
     }
 
     uint8_t getProxySourceClusterId() { return ProxyBase::getSourceClusterId(); }
@@ -43,7 +42,7 @@ public:
 
     uint16_t getServiceId() const override { return serviceId_; }
 
-    HRESULT onNewMessageReceived(Message const& msg) override { return HRESULT::NotImplemented; }
+    HRESULT onNewMessageReceived(Message const&) override { return HRESULT::NotImplemented; }
 
 private:
     uint16_t serviceId_{0x10U};
@@ -135,12 +134,11 @@ TEST_F(ProxyBaseTest, TestInitFromDatabaseWithInvalidClusterId)
 TEST_F(ProxyBaseTest, TestGenerateMessageHeaderWithRequestId)
 {
     // ARRANGE
-    Message msg;
     uint16_t const memberId{0x15U};
     uint16_t const requestId{0x05U};
 
     // ACT
-    msg = proxy_.generateMessageHeader(memberId, requestId);
+    Message const msg = proxy_.generateMessageHeader(memberId, requestId);
 
     // ASSERT
     EXPECT_EQ(msg.getHeader().srcClusterId, kValidclustid);
@@ -148,21 +146,19 @@ TEST_F(ProxyBaseTest, TestGenerateMessageHeaderWithRequestId)
     EXPECT_EQ(msg.getHeader().serviceId, proxy_.getServiceId());
     EXPECT_EQ(msg.getHeader().memberId, memberId);
     EXPECT_EQ(msg.getHeader().serviceInstanceId, proxy_.getInstanceId());
-    EXPECT_EQ(msg.getAddressId(), proxy_.getAddressId());
+    EXPECT_EQ(msg.getHeader().addressId, proxy_.getAddressId());
     EXPECT_EQ(msg.getHeader().requestId, requestId);
-    EXPECT_TRUE(msg.hasOutArgs());
-    EXPECT_TRUE(msg.isSkeletonTarget());
+    EXPECT_TRUE(msg.isRequest());
     EXPECT_FALSE(msg.isEvent());
 }
 
 TEST_F(ProxyBaseTest, TestGenerateMessageHeaderWithInvalidRequestId)
 {
     // ARRANGE
-    Message msg;
     uint16_t const memberId{0x15U};
 
     // ACT
-    msg = proxy_.generateMessageHeader(memberId, INVALID_REQUEST_ID);
+    Message msg = proxy_.generateMessageHeader(memberId, INVALID_REQUEST_ID);
 
     // ASSERT
     EXPECT_EQ(msg.getHeader().srcClusterId, kValidclustid);
@@ -170,10 +166,9 @@ TEST_F(ProxyBaseTest, TestGenerateMessageHeaderWithInvalidRequestId)
     EXPECT_EQ(msg.getHeader().serviceId, proxy_.getServiceId());
     EXPECT_EQ(msg.getHeader().memberId, memberId);
     EXPECT_EQ(msg.getHeader().serviceInstanceId, proxy_.getInstanceId());
-    EXPECT_EQ(msg.getAddressId(), proxy_.getAddressId());
+    EXPECT_EQ(msg.getHeader().addressId, proxy_.getAddressId());
     EXPECT_EQ(msg.getHeader().requestId, INVALID_REQUEST_ID);
-    EXPECT_FALSE(msg.hasOutArgs());
-    EXPECT_TRUE(msg.isSkeletonTarget());
+    EXPECT_TRUE(msg.isFireAndForgetRequest());
     EXPECT_FALSE(msg.isEvent());
 }
 
@@ -190,7 +185,6 @@ TEST_F(ProxyBaseTest, TestGenerateMessageHeaderWithInvalidRequestId)
 TEST_F(ProxyBaseTest, TestGenerateAndSendMessage)
 {
     // ARRANGE
-    etl::array<uint8_t, 2U> payloadArray{{0x00U, 0x01U}};
     uint16_t const memberId{0x15U};
     uint16_t const requestId{0x05U};
 
@@ -198,7 +192,6 @@ TEST_F(ProxyBaseTest, TestGenerateAndSendMessage)
     Message msg = proxy_.generateMessageHeader(memberId, requestId);
 
     // ASSERT
-    EXPECT_EQ(MessageAllocator::getInstance().allocate(payloadArray, msg), HRESULT::Ok);
     EXPECT_EQ(proxy_.sendMessage(msg), HRESULT::Ok);
 }
 
@@ -206,7 +199,8 @@ TEST_F(ProxyBaseTest, TestSendMessageWithNotInitProxy)
 {
     // ARRANGE
     Proxy proxy;
-    Message msg{};
+    Message msg
+        = Message::createRequest(proxy.getServiceId(), 0x01U, 0x01U, 0x01U, 0x01U, 0x02U, 0x01U);
 
     // ASSERT
     EXPECT_EQ(proxy.sendMessage(msg), HRESULT::NotRegistered);
