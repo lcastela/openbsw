@@ -8,8 +8,8 @@
 
 #include "allocator_mock.h"
 #include "dsl_logger.h"
-#include "middleware/core/message_allocator.h"
-#include "middleware/core/middleware_message.h"
+#include "middleware/core/Message.h"
+#include "middleware/core/MessageAllocator.h"
 #include "middleware/core/types.h"
 
 namespace middleware::core::test
@@ -36,7 +36,7 @@ struct SmallNonTrivialType
 
     struct AllocationPolicy
     {
-        static void serialize(const SmallNonTrivialType& obj, etl::span<uint8_t>& buffer)
+        static void serialize(SmallNonTrivialType const& obj, etl::span<uint8_t>& buffer)
         {
             etl::byte_stream_writer writer{buffer, etl::endian::native};
             writer.write_unchecked(static_cast<uint32_t>(obj.data.size()));
@@ -46,16 +46,17 @@ struct SmallNonTrivialType
             }
         }
 
-        static size_t getNeededSize(const SmallNonTrivialType& obj)
+        static size_t getNeededSize(SmallNonTrivialType const& obj)
         {
             return sizeof(uint32_t) + (obj.data.size() * sizeof(decltype(obj.data)::value_type));
         }
 
-        static SmallNonTrivialType deserialize(const etl::span<uint8_t>& serializedBuffer)
+        static SmallNonTrivialType deserialize(etl::span<uint8_t> const& serializedBuffer)
         {
-            etl::byte_stream_reader reader{serializedBuffer.begin(), serializedBuffer.end(), etl::endian::native};
+            etl::byte_stream_reader reader{
+                serializedBuffer.begin(), serializedBuffer.end(), etl::endian::native};
             SmallNonTrivialType obj{};
-            const uint32_t size = reader.read_unchecked<uint32_t>();
+            uint32_t const size = reader.read_unchecked<uint32_t>();
             for (uint32_t idx = 0U; idx < size; ++idx)
             {
                 obj.data.push_back(reader.read_unchecked<decltype(obj.data)::value_type>());
@@ -74,7 +75,7 @@ struct BigNonTrivialType
 
     struct AllocationPolicy
     {
-        static void serialize(const BigNonTrivialType& obj, etl::span<uint8_t>& buffer)
+        static void serialize(BigNonTrivialType const& obj, etl::span<uint8_t>& buffer)
         {
             etl::byte_stream_writer writer{buffer, etl::endian::native};
             writer.write_unchecked(static_cast<uint32_t>(obj.a));
@@ -86,19 +87,20 @@ struct BigNonTrivialType
             }
         }
 
-        static size_t getNeededSize(const BigNonTrivialType& obj)
+        static size_t getNeededSize(BigNonTrivialType const& obj)
         {
-            return sizeof(obj.a) + sizeof(obj.b) + sizeof(uint32_t) +
-                   (obj.data.size() * sizeof(decltype(obj.data)::value_type));
+            return sizeof(obj.a) + sizeof(obj.b) + sizeof(uint32_t)
+                   + (obj.data.size() * sizeof(decltype(obj.data)::value_type));
         }
 
-        static BigNonTrivialType deserialize(const etl::span<uint8_t>& serializedBuffer)
+        static BigNonTrivialType deserialize(etl::span<uint8_t> const& serializedBuffer)
         {
-            etl::byte_stream_reader reader{serializedBuffer.begin(), serializedBuffer.end(), etl::endian::native};
+            etl::byte_stream_reader reader{
+                serializedBuffer.begin(), serializedBuffer.end(), etl::endian::native};
             BigNonTrivialType obj{};
-            obj.a = reader.read_unchecked<decltype(obj.a)>();
-            obj.b = reader.read_unchecked<decltype(obj.b)>();
-            const uint32_t size = reader.read_unchecked<uint32_t>();
+            obj.a               = reader.read_unchecked<decltype(obj.a)>();
+            obj.b               = reader.read_unchecked<decltype(obj.b)>();
+            uint32_t const size = reader.read_unchecked<uint32_t>();
             for (uint32_t idx = 0U; idx < size; ++idx)
             {
                 obj.data.push_back(reader.read_unchecked<decltype(obj.data)::value_type>());
@@ -111,15 +113,15 @@ struct BigNonTrivialType
 
 class AllocatorImpl
 {
-  public:
-    AllocatorImpl() = default;
-    ~AllocatorImpl() = default;
-    AllocatorImpl(const AllocatorImpl& other) = delete;
-    AllocatorImpl(AllocatorImpl&& other) = delete;
-    AllocatorImpl& operator=(const AllocatorImpl& other) = delete;
-    AllocatorImpl& operator=(AllocatorImpl&& other) = delete;
+public:
+    AllocatorImpl()                                      = default;
+    ~AllocatorImpl()                                     = default;
+    AllocatorImpl(AllocatorImpl const& other)            = delete;
+    AllocatorImpl(AllocatorImpl&& other)                 = delete;
+    AllocatorImpl& operator=(AllocatorImpl const& other) = delete;
+    AllocatorImpl& operator=(AllocatorImpl&& other)      = delete;
 
-    template <size_t MAX_COUNT, size_t MAX_SIZE>
+    template<size_t MAX_COUNT, size_t MAX_SIZE>
     using Storage = etl::vector<etl::array<uint8_t, MAX_SIZE>, MAX_COUNT>;
 
     enum class PoolId : uint8_t
@@ -129,7 +131,7 @@ class AllocatorImpl
         Pool128
     };
 
-    uint8_t* allocate(const uint32_t size)
+    uint8_t* allocate(uint32_t const size)
     {
         uint8_t* res{nullptr};
         if (!pool32_.full())
@@ -193,23 +195,16 @@ class AllocatorImpl
         }
     }
 
-    [[nodiscard]] bool isAllocatorPoolFull(const PoolId poolId) const
+    [[nodiscard]] bool isAllocatorPoolFull(PoolId const poolId) const
     {
         bool ret = false;
 
         switch (poolId)
         {
-            case PoolId::Pool32:
-                ret = pool32_.full();
-                break;
-            case PoolId::Pool64:
-                ret = pool64_.full();
-                break;
-            case PoolId::Pool128:
-                ret = pool128_.full();
-                break;
-            default:
-                break;
+            case PoolId::Pool32:  ret = pool32_.full(); break;
+            case PoolId::Pool64:  ret = pool64_.full(); break;
+            case PoolId::Pool128: ret = pool128_.full(); break;
+            default:              break;
         }
 
         return ret;
@@ -217,12 +212,12 @@ class AllocatorImpl
 
     uint8_t* regionStart() { return reinterpret_cast<uint8_t*>(pool32_.data()); }
 
-    bool isPtrValid(const void* const ptr)
+    bool isPtrValid(void const* const ptr)
     {
         return (ptr == pool32_.data()) || (ptr == pool64_.data()) || (ptr == pool128_.data());
     }
 
-  private:
+private:
     Storage<1U, 32U> pool32_;
     Storage<1U, 64U> pool64_;
     Storage<1U, 128U> pool128_;
@@ -230,28 +225,28 @@ class AllocatorImpl
 
 class TestMessageAllocator : public ::testing::Test
 {
-  public:
+public:
     void SetUp() final
     {
         logger_mock_.setup();
         memory::test::AllocatorMock::setAllocatorMock(allocatorMock_);
-        ON_CALL(allocatorMock_, allocate).WillByDefault([this](const uint32_t size) -> uint8_t* {
-            return allocator_.allocate(size);
-        });
-        ON_CALL(allocatorMock_, deallocate).WillByDefault([this](void* ptr) -> void { allocator_.deallocate(ptr); });
-        ON_CALL(allocatorMock_, regionStart).WillByDefault([this](void) -> uint8_t* {
-            return allocator_.regionStart();
-        });
-        ON_CALL(allocatorMock_, isPtrValid).WillByDefault([this](const void* const ptr) -> bool {
-            return allocator_.isPtrValid(ptr);
-        });
+        ON_CALL(allocatorMock_, allocate)
+            .WillByDefault(
+                [this](uint32_t const size) -> uint8_t* { return allocator_.allocate(size); });
+        ON_CALL(allocatorMock_, deallocate)
+            .WillByDefault([this](void* ptr) -> void { allocator_.deallocate(ptr); });
+        ON_CALL(allocatorMock_, regionStart)
+            .WillByDefault([this](void) -> uint8_t* { return allocator_.regionStart(); });
+        ON_CALL(allocatorMock_, isPtrValid)
+            .WillByDefault(
+                [this](void const* const ptr) -> bool { return allocator_.isPtrValid(ptr); });
     }
 
     void TearDown() final { logger_mock_.teardown(); }
 
-    const AllocatorImpl& getAllocatorImpl() { return allocator_; }
+    AllocatorImpl const& getAllocatorImpl() { return allocator_; }
 
-  protected:
+protected:
     middleware::logger::test::DslLogger logger_mock_{};
     testing::NiceMock<memory::test::AllocatorMock> allocatorMock_{};
     AllocatorImpl allocator_{};
@@ -260,17 +255,17 @@ class TestMessageAllocator : public ::testing::Test
 TEST_F(TestMessageAllocator, TestSmallTrivialType)
 {
     // ARRANGE
-    const SmallTrivialType obj{
+    SmallTrivialType const obj{
         0xF1359EA0U,
         0x51314BA1U,
         0x1289CEA2U,
         0x902C37FFU,
     };
-    core::MiddlewareMessage msg{};
+    core::Message msg{};
 
     // ACT
-    core::HRESULT ret = MessageAllocator::getInstance().allocate(obj, msg);
-    const auto storedObj = MessageAllocator::getInstance().readPayload<SmallTrivialType>(msg);
+    core::HRESULT ret    = MessageAllocator::getInstance().allocate(obj, msg);
+    auto const storedObj = MessageAllocator::getInstance().readPayload<SmallTrivialType>(msg);
     MessageAllocator::deallocate(msg);
 
     // ASSERT
@@ -284,12 +279,12 @@ TEST_F(TestMessageAllocator, TestSmallTrivialType)
 TEST_F(TestMessageAllocator, TestBigTrivialType)
 {
     // ARRANGE
-    const BigTrivialType obj{0xF1359EA0221A3749U, 0x51314BA1F17BCD21U, 0x1289CEA256BD29A4U};
-    core::MiddlewareMessage msg{};
+    BigTrivialType const obj{0xF1359EA0221A3749U, 0x51314BA1F17BCD21U, 0x1289CEA256BD29A4U};
+    core::Message msg{};
 
     // ACT
-    core::HRESULT ret = MessageAllocator::getInstance().allocate(obj, msg);
-    const auto storedObj = MessageAllocator::getInstance().readPayload<BigTrivialType>(msg);
+    core::HRESULT ret    = MessageAllocator::getInstance().allocate(obj, msg);
+    auto const storedObj = MessageAllocator::getInstance().readPayload<BigTrivialType>(msg);
     MessageAllocator::deallocate(msg);
 
     // ASSERT
@@ -307,11 +302,11 @@ TEST_F(TestMessageAllocator, TestSmallNonTrivialType)
     obj.data.push_back(0x27U);
     obj.data.push_back(0x99U);
     obj.data.push_back(0x50U);
-    core::MiddlewareMessage msg{};
+    core::Message msg{};
 
     // ACT
-    core::HRESULT ret = MessageAllocator::getInstance().allocate(obj, msg);
-    const auto storedObj = MessageAllocator::getInstance().readPayload<SmallNonTrivialType>(msg);
+    core::HRESULT ret    = MessageAllocator::getInstance().allocate(obj, msg);
+    auto const storedObj = MessageAllocator::getInstance().readPayload<SmallNonTrivialType>(msg);
     MessageAllocator::deallocate(msg);
 
     // ASSERT
@@ -333,11 +328,11 @@ TEST_F(TestMessageAllocator, BigNonTrivialType)
     obj.data.push_back(0xAFU);
     obj.data.push_back(0x9DU);
     obj.data.push_back(0xC0U);
-    core::MiddlewareMessage msg{};
+    core::Message msg{};
 
     // ACT
-    core::HRESULT ret = MessageAllocator::getInstance().allocate(obj, msg);
-    const auto storedObj = MessageAllocator::getInstance().readPayload<BigNonTrivialType>(msg);
+    core::HRESULT ret    = MessageAllocator::getInstance().allocate(obj, msg);
+    auto const storedObj = MessageAllocator::getInstance().readPayload<BigNonTrivialType>(msg);
     MessageAllocator::deallocate(msg);
 
     // ASSERT
@@ -350,18 +345,19 @@ TEST_F(TestMessageAllocator, BigNonTrivialType)
 TEST_F(TestMessageAllocator, TestBigTrivialTypeWithMultipleReferenceCounter)
 {
     // ARRANGE
-    const BigTrivialType obj{0xF1359EA0221A3749U, 0x51314BA1F17BCD21U, 0x1289CEA256BD29A4U};
-    core::MiddlewareMessage msg{};
-    const uint8_t numberOfReferences = 5U;
+    BigTrivialType const obj{0xF1359EA0221A3749U, 0x51314BA1F17BCD21U, 0x1289CEA256BD29A4U};
+    core::Message msg{};
+    uint8_t const numberOfReferences = 5U;
 
     // ACT
-    EXPECT_EQ(MessageAllocator::getInstance().allocate(obj, msg, numberOfReferences), core::HRESULT::Ok);
+    EXPECT_EQ(
+        MessageAllocator::getInstance().allocate(obj, msg, numberOfReferences), core::HRESULT::Ok);
 
     // ASSERT
     for (size_t readings = 0U; readings < numberOfReferences; readings++)
     {
         EXPECT_TRUE(getAllocatorImpl().isAllocatorPoolFull(AllocatorImpl::PoolId::Pool32));
-        const auto storedObj = MessageAllocator::getInstance().readPayload<BigTrivialType>(msg);
+        auto const storedObj = MessageAllocator::getInstance().readPayload<BigTrivialType>(msg);
         EXPECT_EQ(obj.a, storedObj.a);
         EXPECT_EQ(obj.b, storedObj.b);
         EXPECT_EQ(obj.c, storedObj.c);
@@ -384,17 +380,18 @@ TEST_F(TestMessageAllocator, TestBigNonTrivialTypeWithMultipleReferenceCounter)
     obj.data.push_back(0xAFU);
     obj.data.push_back(0x9DU);
     obj.data.push_back(0xC0U);
-    core::MiddlewareMessage msg{};
-    const uint8_t numberOfReferences = 5U;
+    core::Message msg{};
+    uint8_t const numberOfReferences = 5U;
 
     // ACT
-    EXPECT_EQ(MessageAllocator::getInstance().allocate(obj, msg, numberOfReferences), core::HRESULT::Ok);
+    EXPECT_EQ(
+        MessageAllocator::getInstance().allocate(obj, msg, numberOfReferences), core::HRESULT::Ok);
 
     // ASSERT
     for (size_t readings = 0U; readings < numberOfReferences; readings++)
     {
         EXPECT_TRUE(getAllocatorImpl().isAllocatorPoolFull(AllocatorImpl::PoolId::Pool32));
-        const auto storedObj = MessageAllocator::getInstance().readPayload<BigNonTrivialType>(msg);
+        auto const storedObj = MessageAllocator::getInstance().readPayload<BigNonTrivialType>(msg);
         EXPECT_EQ(obj.a, storedObj.a);
         EXPECT_EQ(obj.b, storedObj.b);
         EXPECT_EQ(obj.data, storedObj.data);
@@ -406,28 +403,29 @@ TEST_F(TestMessageAllocator, TestBigNonTrivialTypeWithMultipleReferenceCounter)
 TEST_F(TestMessageAllocator, TestFailedAllocationForTrivialType)
 {
     // ARRANGE
-    const BigTrivialType obj{0xF1359EA0221A3749U, 0x51314BA1F17BCD21U, 0x1289CEA256BD29A4U};
-    core::MiddlewareMessage msg1{};
-    core::MiddlewareMessage msg2{};
-    core::MiddlewareMessage msg3{};
-    core::MiddlewareMessage msg4{};
+    BigTrivialType const obj{0xF1359EA0221A3749U, 0x51314BA1F17BCD21U, 0x1289CEA256BD29A4U};
+    core::Message msg1{};
+    core::Message msg2{};
+    core::Message msg3{};
+    core::Message msg4{};
 
     // ACT
-    core::HRESULT firstAllocationResult = MessageAllocator::getInstance().allocate(obj, msg1);
+    core::HRESULT firstAllocationResult  = MessageAllocator::getInstance().allocate(obj, msg1);
     core::HRESULT secondAllocationResult = MessageAllocator::getInstance().allocate(obj, msg2);
-    core::HRESULT thirdAllocationResult = MessageAllocator::getInstance().allocate(obj, msg3);
+    core::HRESULT thirdAllocationResult  = MessageAllocator::getInstance().allocate(obj, msg3);
 
-    logger_mock_.EXPECT_EVENT_LOG(logger::LogLevel::Error,
-                                  logger::Error::Allocation,
-                                  HRESULT::CannotAllocatePayload,
+    logger_mock_.EXPECT_EVENT_LOG(
+        logger::LogLevel::Error,
+        logger::Error::Allocation,
+        HRESULT::CannotAllocatePayload,
 
-                                  msg4.getSourceClusterId(),
-                                  msg4.getTargetClusterId(),
-                                  msg4.getHeader().serviceId,
-                                  msg4.getHeader().serviceInstanceId,
-                                  msg4.getHeader().memberId,
-                                  msg4.getHeader().requestId,
-                                  static_cast<uint32_t>(sizeof(obj)));
+        msg4.getHeader().srcClusterId,
+        msg4.getHeader().tgtClusterId,
+        msg4.getHeader().serviceId,
+        msg4.getHeader().serviceInstanceId,
+        msg4.getHeader().memberId,
+        msg4.getHeader().requestId,
+        static_cast<uint32_t>(sizeof(obj)));
     core::HRESULT fourthAllocationResult = MessageAllocator::getInstance().allocate(obj, msg4);
 
     // ASSERT
@@ -454,27 +452,28 @@ TEST_F(TestMessageAllocator, TestFailedAllocationForNonTrivialType)
     obj.data.push_back(0xAFU);
     obj.data.push_back(0x9DU);
     obj.data.push_back(0xC0U);
-    core::MiddlewareMessage msg1{};
-    core::MiddlewareMessage msg2{};
-    core::MiddlewareMessage msg3{};
-    core::MiddlewareMessage msg4{};
+    core::Message msg1{};
+    core::Message msg2{};
+    core::Message msg3{};
+    core::Message msg4{};
 
     // ACT
-    core::HRESULT firstAllocationResult = MessageAllocator::getInstance().allocate(obj, msg1);
+    core::HRESULT firstAllocationResult  = MessageAllocator::getInstance().allocate(obj, msg1);
     core::HRESULT secondAllocationResult = MessageAllocator::getInstance().allocate(obj, msg2);
-    core::HRESULT thirdAllocationResult = MessageAllocator::getInstance().allocate(obj, msg3);
+    core::HRESULT thirdAllocationResult  = MessageAllocator::getInstance().allocate(obj, msg3);
 
-    logger_mock_.EXPECT_EVENT_LOG(logger::LogLevel::Error,
-                                  logger::Error::Allocation,
-                                  HRESULT::CannotAllocatePayload,
+    logger_mock_.EXPECT_EVENT_LOG(
+        logger::LogLevel::Error,
+        logger::Error::Allocation,
+        HRESULT::CannotAllocatePayload,
 
-                                  msg4.getSourceClusterId(),
-                                  msg4.getTargetClusterId(),
-                                  msg4.getHeader().serviceId,
-                                  msg4.getHeader().serviceInstanceId,
-                                  msg4.getHeader().memberId,
-                                  msg4.getHeader().requestId,
-                                  static_cast<uint32_t>(BigNonTrivialType::AllocationPolicy::getNeededSize(obj)));
+        msg4.getHeader().srcClusterId,
+        msg4.getHeader().tgtClusterId,
+        msg4.getHeader().serviceId,
+        msg4.getHeader().serviceInstanceId,
+        msg4.getHeader().memberId,
+        msg4.getHeader().requestId,
+        static_cast<uint32_t>(BigNonTrivialType::AllocationPolicy::getNeededSize(obj)));
     core::HRESULT fourthAllocationResult = MessageAllocator::getInstance().allocate(obj, msg4);
 
     // ASSERT
@@ -487,4 +486,4 @@ TEST_F(TestMessageAllocator, TestFailedAllocationForNonTrivialType)
     MessageAllocator::deallocate(msg3);
 }
 
-}  // namespace middleware::core::test
+} // namespace middleware::core::test

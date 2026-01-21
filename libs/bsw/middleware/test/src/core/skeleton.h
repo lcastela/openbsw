@@ -1,22 +1,23 @@
 #include "gtest/gtest.h"
-#include "middleware/core/skeleton_base.h"
+#include "middleware/core/SkeletonBase.h"
 #include "middleware/core/types.h"
 
 class SkeletonMock : public ::middleware::core::SkeletonBase
 {
-
-  public:
-    SkeletonMock(::middleware::core::ServiceId serviceId, ::middleware::core::InstanceId instanceId)
-        : serviceId_(serviceId), middleware::core::SkeletonBase()
+public:
+    SkeletonMock(uint16_t serviceId, uint16_t instanceId)
+    : serviceId_(serviceId), middleware::core::SkeletonBase()
     {
         this->setInstanceId(instanceId);
     }
-    ::middleware::core::ServiceId getServiceId() const final { return serviceId_; }
-    virtual ::middleware::core::HRESULT onNewMessageReceived(const ::middleware::core::MiddlewareMessage& msg)
+
+    uint16_t getServiceId() const final { return serviceId_; }
+
+    virtual ::middleware::core::HRESULT onNewMessageReceived(::middleware::core::Message const& msg)
     {
         return ::middleware::core::HRESULT::NotImplemented;
     }
 
-  private:
-    ::middleware::core::ServiceId serviceId_;
+private:
+    uint16_t serviceId_;
 };

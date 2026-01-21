@@ -6,13 +6,13 @@
 #include "dsl_logger.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "middleware/core/icluster_connection.h"
-#include "middleware/core/logger_api.h"
-#include "middleware/core/message_allocator.h"
-#include "middleware/core/middleware_message.h"
-#include "middleware/core/proxy_base.h"
+#include "middleware/core/IClusterConnection.h"
+#include "middleware/core/LoggerApi.h"
+#include "middleware/core/Message.h"
+#include "middleware/core/MessageAllocator.h"
+#include "middleware/core/ProxyBase.h"
 #include "middleware/core/types.h"
-#include "middleware_instances_database.h"
+#include "middleware_InstancesDatabase.h"
 
 using testing::_;
 using testing::Exactly;
@@ -27,25 +27,31 @@ namespace test
 
 class Proxy : public ProxyBase
 {
-  public:
-    HRESULT init(InstanceId instanceId, ClusterId clusterId)
+public:
+    HRESULT init(uint16_t instanceId, uint8_t clusterId)
     {
-        return ProxyBase::initFromInstancesDatabase(instanceId, clusterId, etl::span(INSTANCESDATABASE));
+        return ProxyBase::initFromInstancesDatabase(
+            instanceId, clusterId, etl::span(INSTANCESDATABASE));
     }
 
-    ClusterId getProxySourceClusterId() { return ProxyBase::getSourceClusterId(); }
-    void checkCrossThreadError(const uint32_t initId) { return ProxyBase::checkCrossThreadError(initId); }
+    uint8_t getProxySourceClusterId() { return ProxyBase::getSourceClusterId(); }
 
-    ServiceId getServiceId() const override { return serviceId_; }
-    HRESULT onNewMessageReceived(const MiddlewareMessage& msg) override { return HRESULT::NotImplemented; }
+    void checkCrossThreadError(uint32_t const initId)
+    {
+        return ProxyBase::checkCrossThreadError(initId);
+    }
 
-  private:
-    ServiceId serviceId_{0x10U};
+    uint16_t getServiceId() const override { return serviceId_; }
+
+    HRESULT onNewMessageReceived(Message const& msg) override { return HRESULT::NotImplemented; }
+
+private:
+    uint16_t serviceId_{0x10U};
 };
 
 class ProxyBaseTest : public ::testing::Test
 {
-  public:
+public:
     void SetUp() override
     {
         logger_mock_.setup();
@@ -56,11 +62,11 @@ class ProxyBaseTest : public ::testing::Test
 
     void TearDown() override { logger_mock_.teardown(); }
 
-  protected:
-    const InstanceId kValidinstanceid{1U};
-    const ClusterId kValidclustid{static_cast<ClusterId>(1U)};
-    const InstanceId kInvalidinstanceid{100U};
-    const ClusterId kInvalidclustid{static_cast<ClusterId>(100U)};
+protected:
+    uint16_t const kValidinstanceid{1U};
+    uint8_t const kValidclustid{static_cast<uint8_t>(1U)};
+    uint16_t const kInvalidinstanceid{100U};
+    uint8_t const kInvalidclustid{static_cast<uint8_t>(100U)};
 
     Proxy proxy_;
     middleware::logger::test::DslLogger logger_mock_{};
@@ -91,12 +97,13 @@ TEST_F(ProxyBaseTest, TestInitFromDatabaseWithInvalidInstanceId)
     // ARRANGE
     Proxy proxy;
 
-    logger_mock_.EXPECT_EVENT_LOG(logger::LogLevel::Critical,
-                                  logger::Error::ProxyInitialization,
-                                  HRESULT::TransceiverInitializationFailed,
-                                  kValidclustid,
-                                  proxy.getServiceId(),
-                                  kInvalidinstanceid);
+    logger_mock_.EXPECT_EVENT_LOG(
+        logger::LogLevel::Critical,
+        logger::Error::ProxyInitialization,
+        HRESULT::TransceiverInitializationFailed,
+        kValidclustid,
+        proxy.getServiceId(),
+        kInvalidinstanceid);
 
     // ACT & ASSERT
     const HRESULT res = proxy.init(kInvalidinstanceid, kValidclustid);
@@ -110,12 +117,13 @@ TEST_F(ProxyBaseTest, TestInitFromDatabaseWithInvalidClusterId)
     // ARRANGE
     Proxy proxy;
 
-    logger_mock_.EXPECT_EVENT_LOG(logger::LogLevel::Critical,
-                                  logger::Error::ProxyInitialization,
-                                  HRESULT::TransceiverInitializationFailed,
-                                  kInvalidclustid,
-                                  proxy.getServiceId(),
-                                  kValidinstanceid);
+    logger_mock_.EXPECT_EVENT_LOG(
+        logger::LogLevel::Critical,
+        logger::Error::ProxyInitialization,
+        HRESULT::TransceiverInitializationFailed,
+        kInvalidclustid,
+        proxy.getServiceId(),
+        kValidinstanceid);
 
     // ACT & ASSERT
     const HRESULT res = proxy.init(kValidinstanceid, kInvalidclustid);
@@ -127,16 +135,16 @@ TEST_F(ProxyBaseTest, TestInitFromDatabaseWithInvalidClusterId)
 TEST_F(ProxyBaseTest, TestGenerateMessageHeaderWithRequestId)
 {
     // ARRANGE
-    MiddlewareMessage msg;
-    const MemberId memberId{0x15U};
-    const RequestId requestId{0x05U};
+    Message msg;
+    uint16_t const memberId{0x15U};
+    uint16_t const requestId{0x05U};
 
     // ACT
     msg = proxy_.generateMessageHeader(memberId, requestId);
 
     // ASSERT
-    EXPECT_EQ(msg.getSourceClusterId(), kValidclustid);
-    EXPECT_EQ(msg.getTargetClusterId(), static_cast<ClusterId>(2U));  // Hardcoded for now
+    EXPECT_EQ(msg.getHeader().srcClusterId, kValidclustid);
+    EXPECT_EQ(msg.getHeader().tgtClusterId, static_cast<uint8_t>(2U)); // Hardcoded for now
     EXPECT_EQ(msg.getHeader().serviceId, proxy_.getServiceId());
     EXPECT_EQ(msg.getHeader().memberId, memberId);
     EXPECT_EQ(msg.getHeader().serviceInstanceId, proxy_.getInstanceId());
@@ -150,15 +158,15 @@ TEST_F(ProxyBaseTest, TestGenerateMessageHeaderWithRequestId)
 TEST_F(ProxyBaseTest, TestGenerateMessageHeaderWithInvalidRequestId)
 {
     // ARRANGE
-    MiddlewareMessage msg;
-    const MemberId memberId{0x15U};
+    Message msg;
+    uint16_t const memberId{0x15U};
 
     // ACT
     msg = proxy_.generateMessageHeader(memberId, INVALID_REQUEST_ID);
 
     // ASSERT
-    EXPECT_EQ(msg.getSourceClusterId(), kValidclustid);
-    EXPECT_EQ(msg.getTargetClusterId(), static_cast<ClusterId>(2U));  // Hardcoded for now
+    EXPECT_EQ(msg.getHeader().srcClusterId, kValidclustid);
+    EXPECT_EQ(msg.getHeader().tgtClusterId, static_cast<uint8_t>(2U)); // Hardcoded for now
     EXPECT_EQ(msg.getHeader().serviceId, proxy_.getServiceId());
     EXPECT_EQ(msg.getHeader().memberId, memberId);
     EXPECT_EQ(msg.getHeader().serviceInstanceId, proxy_.getInstanceId());
@@ -183,11 +191,11 @@ TEST_F(ProxyBaseTest, TestGenerateAndSendMessage)
 {
     // ARRANGE
     etl::array<uint8_t, 2U> payloadArray{{0x00U, 0x01U}};
-    const MemberId memberId{0x15U};
-    const RequestId requestId{0x05U};
+    uint16_t const memberId{0x15U};
+    uint16_t const requestId{0x05U};
 
     // ACT
-    MiddlewareMessage msg = proxy_.generateMessageHeader(memberId, requestId);
+    Message msg = proxy_.generateMessageHeader(memberId, requestId);
 
     // ASSERT
     EXPECT_EQ(MessageAllocator::getInstance().allocate(payloadArray, msg), HRESULT::Ok);
@@ -198,7 +206,7 @@ TEST_F(ProxyBaseTest, TestSendMessageWithNotInitProxy)
 {
     // ARRANGE
     Proxy proxy;
-    MiddlewareMessage msg{};
+    Message msg{};
 
     // ASSERT
     EXPECT_EQ(proxy.sendMessage(msg), HRESULT::NotRegistered);
@@ -207,7 +215,7 @@ TEST_F(ProxyBaseTest, TestSendMessageWithNotInitProxy)
 TEST_F(ProxyBaseDeathTest, TestCheckCrossThreadErrorWithSameTaskId)
 {
     // ARRANGE
-    const uint32_t goodProcess = 0U;
+    uint32_t const goodProcess = 0U;
     logger_mock_.EXPECT_NO_LOGGING();
 
     // ACT & ASSERT
@@ -218,7 +226,7 @@ TEST_F(ProxyBaseDeathTest, TestCheckCrossThreadErrorWithNotInitProxy)
 {
     // ARRANGE
     Proxy proxy;
-    const uint32_t goodProcess = 0U;
+    uint32_t const goodProcess = 0U;
     logger_mock_.EXPECT_NO_LOGGING();
 
     // ACT & ASSERT
@@ -228,23 +236,24 @@ TEST_F(ProxyBaseDeathTest, TestCheckCrossThreadErrorWithNotInitProxy)
 TEST_F(ProxyBaseDeathTest, TestCheckCrossThreadErrorAssert)
 {
     // ARRANGE
-    const uint32_t wrongProcess = 1234U;
+    uint32_t const wrongProcess = 1234U;
 
     // ACT & ASSERT
     EXPECT_DEATH(
         {
-            logger_mock_.EXPECT_EVENT_LOG(logger::LogLevel::Error,
-                                          logger::Error::ProxyCrossThreaViolation,
-                                          proxy_.getProxySourceClusterId(),
-                                          proxy_.getServiceId(),
-                                          proxy_.getInstanceId(),
-                                          wrongProcess,
-                                          0U);
+            logger_mock_.EXPECT_EVENT_LOG(
+                logger::LogLevel::Error,
+                logger::Error::ProxyCrossThreaViolation,
+                proxy_.getProxySourceClusterId(),
+                proxy_.getServiceId(),
+                proxy_.getInstanceId(),
+                wrongProcess,
+                0U);
             proxy_.checkCrossThreadError(wrongProcess);
         },
         "Assertion `false' failed.");
 }
 
-}  // namespace test
-}  // namespace core
-}  // namespace middleware
+} // namespace test
+} // namespace core
+} // namespace middleware
