@@ -1,3 +1,5 @@
+// Copyright 2025 BMW AG
+
 #include "middleware/core/DatabaseManipulator.h"
 
 #include <cstddef>
@@ -26,7 +28,7 @@ DbManipulator::subscribe(
     uint16_t const maxServiceId)
 {
     auto res = HRESULT::ServiceNotFound;
-    MW_SINGLE_CORE_LOCK
+    MIDDLEWARE_SINGLE_CORE_LOCK
     {
         if (proxy.getServiceId() > maxServiceId)
         {
@@ -109,7 +111,7 @@ void DbManipulator::unsubscribe(
     ITransceiver& transceiver,
     uint16_t const serviceId)
 {
-    MW_SINGLE_CORE_LOCK
+    MIDDLEWARE_SINGLE_CORE_LOCK
     {
         auto* const containerIterator = getTransceiversByServiceId(start, end, serviceId);
         if (containerIterator != end)
@@ -142,7 +144,7 @@ DbManipulator::subscribe(
     uint16_t const maxServiceId)
 {
     auto res = HRESULT::ServiceNotFound;
-    MW_SINGLE_CORE_LOCK
+    MIDDLEWARE_SINGLE_CORE_LOCK
     {
         if (skeleton.getServiceId() > maxServiceId)
         {
@@ -330,9 +332,7 @@ ITransceiver* DbManipulator::getTransceiver(
             &dummy,
             TransceiverContainer::TransceiverComparator());
         if ((iter != containerIterator->fContainer->cend())
-            && (!TransceiverContainer::TransceiverComparator()(
-                &dummy,
-                *iter))) // suppress misra 5.14.1: No side effects here.
+            && (!TransceiverContainer::TransceiverComparator()(&dummy, *iter)))
         {
             return *iter;
         }

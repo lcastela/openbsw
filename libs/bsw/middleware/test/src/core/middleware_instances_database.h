@@ -144,7 +144,7 @@ private:
 constexpr InstancesDatabase _InstancesDatabase;
 constexpr EmptyInstancesDatabase _EmptyInstancesDatabase;
 constexpr BadInstancesDatabase _BadInstancesDatabase;
-// suppress misra 3.4.1,2.10.5 next_line: Variable must be file local and can be reused.
+
 constexpr etl::array<::IInstanceDatabase const* const, 1U> INSTANCESDATABASE{&_InstancesDatabase};
 constexpr etl::array<::IInstanceDatabase const* const, 1U> EMPTYINSTANCESDATABASE{
     &_EmptyInstancesDatabase};

@@ -1,6 +1,7 @@
+// Copyright 2025 BMW AG
+
 #include "middleware/core/SkeletonBase.h"
 
-// Library Includes
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -8,7 +9,6 @@
 #include <etl/algorithm.h>
 #include <etl/span.h>
 
-// Middleware Includes
 #include "middleware/concurrency/LockStrategies.h"
 #include "middleware/core/IClusterConnection.h"
 #include "middleware/core/InstancesDatabase.h"
@@ -124,7 +124,6 @@ SkeletonBase::initFromInstancesDatabase(
                     ret = clusConn->subscribe(*this, instanceId);
                     if ((ret == HRESULT::Ok) || (ret == HRESULT::InstanceAlreadyRegistered))
                     {
-                        // suppress misra 6.6.3 next_line: Loop is well formed.
                         continue;
                     }
 
@@ -171,7 +170,6 @@ void SkeletonBase::checkCrossThreadError(uint32_t const initId) const
         auto const currentTaskId = ::middleware::os::getProcessId();
         if (initId != currentTaskId)
         {
-            // suppress misra 0.1.9 next_line: Statement has side effects in production code
             ::middleware::concurrency::suspendAllInterrupts();
 
             logger::logCrossThreadViolation(
@@ -183,7 +181,6 @@ void SkeletonBase::checkCrossThreadError(uint32_t const initId) const
                 initId,
                 currentTaskId);
 
-            // suppress misra 6.2.3,6.3.1 next_line: We want to stay here, forever.
             assert(false);
         }
     }

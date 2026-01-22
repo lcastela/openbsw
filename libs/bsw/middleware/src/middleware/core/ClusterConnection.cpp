@@ -1,9 +1,10 @@
+// Copyright 2025 BMW AG
+
 #include "middleware/core/ClusterConnection.h"
 
 #include "middleware/core/IClusterConnectionConfigurationBase.h"
 #include "middleware/core/types.h"
 
-// suppress misra 5.2.5,5.2.3 EOF: const removal ok. Polymorphic cast ok.
 namespace middleware::core
 {
 

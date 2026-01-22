@@ -1,13 +1,13 @@
+// Copyright 2025 BMW AG
+
 #include "middleware/core/ProxyBase.h"
 
-// Library includes
 #include <cassert>
 #include <cstdint>
 
 #include <etl/algorithm.h>
 #include <etl/span.h>
 
-// Middleware includes
 #include "middleware/concurrency/LockStrategies.h"
 #include "middleware/core/IClusterConnection.h"
 #include "middleware/core/InstancesDatabase.h"
@@ -140,7 +140,6 @@ void ProxyBase::checkCrossThreadError(uint32_t const initId) const
         auto const currentTaskId = ::middleware::os::getProcessId();
         if (initId != currentTaskId)
         {
-            // suppress misra 0.1.9 next_line: Statement has side effects in production code
             ::middleware::concurrency::suspendAllInterrupts();
 
             logger::logCrossThreadViolation(
@@ -152,7 +151,6 @@ void ProxyBase::checkCrossThreadError(uint32_t const initId) const
                 initId,
                 currentTaskId);
 
-            // suppress misra 6.2.3,6.3.1 next_line: We want to stay here, forever.
             assert(false);
         }
     }

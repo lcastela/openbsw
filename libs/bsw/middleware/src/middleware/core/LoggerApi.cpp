@@ -1,3 +1,5 @@
+// Copyright 2025 BMW AG
+
 #include "middleware/core/LoggerApi.h"
 
 #include <cstddef>

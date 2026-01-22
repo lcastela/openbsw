@@ -1,3 +1,5 @@
+// Copyright 2025 BMW AG
+
 #include "middleware/core/ClusterConnectionBase.h"
 
 #include <cstddef>
@@ -11,7 +13,6 @@
 #include "middleware/core/types.h"
 #include "middleware/logger/Logger.h"
 
-// suppress misra 5.2.3 EOF: Polymorphic cast ok.
 namespace middleware::core
 {
 
@@ -25,7 +26,6 @@ void ClusterConnectionBase::processMessage(Message const& msg) const
     // MessageAllocator::deallocate(msg);
 }
 
-// NOLINTNEXTLINE(misc-no-recursion): IPBD-54665 (Deviation Approved)
 void ClusterConnectionBase::respondWithError(ErrorState const error, Message const& msg) const
 {
     Message::Header const& header = msg.getHeader();
@@ -45,18 +45,7 @@ void ClusterConnectionBase::respondWithError(ErrorState const error, Message con
     }
 }
 
-uint8_t ClusterConnectionBase::getSourceClusterId() const
-{
-    return fConfiguration.getSourceClusterId();
-}
-
-uint8_t ClusterConnectionBase::getTargetClusterId() const
-{
-    return fConfiguration.getTargetClusterId();
-}
-
-HRESULT // NOLINTNEXTLINE(misc-no-recursion): IPBD-54665 (Deviation Approved)
-ClusterConnectionBase::sendMessage(Message const& msg) const
+HRESULT ClusterConnectionBase::sendMessage(Message const& msg) const
 {
     auto res = HRESULT::QueueFull;
     if ((msg.getHeader().srcClusterId == msg.getHeader().tgtClusterId))
@@ -80,17 +69,6 @@ ClusterConnectionBase::sendMessage(Message const& msg) const
     return res;
 }
 
-size_t ClusterConnectionBase::registeredTransceiversCount(uint16_t const serviceId) const
-{
-    return fConfiguration.registeredTransceiversCount(serviceId);
-}
-
-IClusterConnectionConfigurationBase& ClusterConnectionBase::getConfiguration() const
-{
-    return fConfiguration;
-}
-
-// NOLINTNEXTLINE(misc-no-recursion): IPBD-54665 (Deviation Approved)
 HRESULT ClusterConnectionBase::dispatchMessage(Message const& msg) const
 {
     auto const res = fConfiguration.dispatchMessage(msg);
@@ -123,21 +101,18 @@ ClusterConnectionTimeoutBase::ClusterConnectionTimeoutBase(ITimeoutConfiguration
 : ClusterConnectionBase(configuration)
 {}
 
-// suppress misra 5.2.5 next_construct: const removal ok.
 void ClusterConnectionTimeoutBase::registerTimeoutTransceiver(ITimeout& transceiver)
 {
     static_cast<ITimeoutConfiguration&>((ClusterConnectionBase::getConfiguration()))
         .registerTimeoutTransceiver(transceiver);
 }
 
-// suppress misra 5.2.5 next_construct: const removal ok.
 void ClusterConnectionTimeoutBase::unregisterTimeoutTransceiver(ITimeout& transceiver)
 {
     static_cast<ITimeoutConfiguration&>((ClusterConnectionBase::getConfiguration()))
         .unregisterTimeoutTransceiver(transceiver);
 }
 
-// suppress misra 5.2.5 next_construct: const removal ok.
 void ClusterConnectionTimeoutBase::updateTimeouts()
 {
     static_cast<ITimeoutConfiguration&>((ClusterConnectionBase::getConfiguration()))

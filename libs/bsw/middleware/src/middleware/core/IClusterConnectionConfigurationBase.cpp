@@ -1,3 +1,5 @@
+// Copyright 2025 BMW AG
+
 #include "middleware/core/IClusterConnectionConfigurationBase.h"
 
 #include <etl/algorithm.h>
@@ -11,14 +13,13 @@
 #include "middleware/core/Message.h"
 #include "middleware/core/types.h"
 
-// suppress misra 0.1.9 EOF: Print statements are not null statements in production.
 namespace middleware::core
 {
 
 void ITimeoutConfiguration::registerTimeoutTransceiver(
     ITimeout& transceiver, ::etl::ivector<ITimeout*>& timeoutTransceivers)
 {
-    MW_SINGLE_CORE_LOCK
+    MIDDLEWARE_SINGLE_CORE_LOCK
     {
         auto const* const iter
             = etl::find(timeoutTransceivers.cbegin(), timeoutTransceivers.cend(), &transceiver);
@@ -42,7 +43,7 @@ void ITimeoutConfiguration::unregisterTimeoutTransceiver(
 {
     using ETL_OR_STD::swap;
 
-    MW_SINGLE_CORE_LOCK
+    MIDDLEWARE_SINGLE_CORE_LOCK
     {
         auto* const iter
             = etl::find(timeoutTransceivers.begin(), timeoutTransceivers.end(), &transceiver);
